@@ -13,9 +13,24 @@ def estimate_succ_rate(x, dist):
             succ += den
     return succ/(fail + succ)
 
+def comb_dist_val(dist_one, dist_two):
+    summed = [0]*max_size
+    for i in range(len(dist_one)):
+        for j in range(len(dist_two)):
+            prob = dist_one[i]*dist_two[j]
+            if prob > 0:
+                sum = i + j
+                summed[sum] += prob
+    return summed
+
 # maybe mu is defined by difference (attr + skill - difficulty)
 # how is "real" sigma defined?
+# skill sigma goes something like sqrt(attr + skill) or sqrt(skill)
+# maybe also some diff sigma that varies independently, thou prob not
+# hard to estimate sigma is still applied to estimation check only, not real check (sometimes)
 # sample size can be determined by (insight + skill)
+
+# check other distributions, probably with more tail towards fail than succeed
 
 mu = 3
 #variance = 30
@@ -69,17 +84,7 @@ one_die.extend([0]*(max_size-sides-1))
 print(one_die)
 dice_dist = [one_die]
 
-def comb_dist(dist_one, dist_two):
-    summed = [0]*max_size
-    for i in range(len(dist_one)):
-        for j in range(len(dist_two)):
-            prob = dist_one[i]*dist_two[j]
-            if prob > 0:
-                sum = i + j
-                summed[sum] += prob
-    return summed
-
 for i in range(10):
-    dice_dist.append(comb_dist(dice_dist[i], one_die))
+    dice_dist.append(comb_dist_val(dice_dist[i], one_die))
     plt.plot(dice_dist[i])
 plt.show()
