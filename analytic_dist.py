@@ -1,7 +1,8 @@
 import itertools
-import numpy
+import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
+import time
 
 """ the idea here is to go through all options rather than sample, can be very timeconsuming for some tasks, beware! """
 
@@ -100,8 +101,8 @@ def get_dist(dice, func):
     results = defaultdict(float)
     for outcomes in itertools.product(*dice):
         (probs, values) = zip(*outcomes)
-        #results.append((numpy.prod(probs), func(values)))
-        results[func(values)] += numpy.prod(probs)
+        #results.append((np.prod(probs), func(values)))
+        results[func(values)] += np.prod(probs)
 
     #results = sorted(results, key = lambda x: x[1])
     #probs, values = zip(*results)
@@ -125,10 +126,81 @@ def get_dist(dice, func):
 
 #probs, values = get_dist([Die(6), Die(6)], lambda x : sum(x))
 #probs, values = get_dist([Die(20), Die(20)], lambda x : max(x))
-probs, values = get_dist([Die(6), Die(6), Die(6), Die(6)], lambda x : sum(sorted(x)[1:]))
-print(probs)
-print(values)
-print(average_outcome(probs, values))
+# probs, values = get_dist([Die(6), Die(6), Die(6), Die(6)], lambda x : sum(sorted(x)[1:]))
+# print(probs)
+# print(values)
+# print(average_outcome(probs, values))
+#
+# plt.bar(values, probs)
+# plt.show()
 
-plt.bar(values, probs)
+""" Exploring alternatives for ruling in WoD """
+min_pool = 2
+max_pool = 10
+step_pool = 2
+min_will = 2
+max_will = 10
+step_will = 2
+
+count_ones = True
+
+
+fig1, ax1 = plt.subplots(int((max_pool-min_pool)/step_pool+1), int((max_will-min_will)/step_will+1), sharex='col', sharey='row',
+                        gridspec_kw={'hspace': 0, 'wspace': 0})
+#fig1 = plt.figure()
+
+for i in range(min_pool, max_pool+1, step_pool): # i for caster
+    print()
+    print("i = {}".format(i))
+    for j in range(min_will, max_will+1, step_will): # j for target
+        print("j = {}".format(j))
+        t = time.time()
+        # vs roll (vamp)
+        if count_ones:
+            dice = [Die(3, probabilities=[0.1, 0.4, 0.5], values=[-1, 0, 1]) for x in range(i)]
+            dice += [Die(3, probabilities=[0.1, 0.4, 0.5], values=[-1, 0, 1]) for x in range(j)]
+        else:
+            dice = [Die(2, probabilities=[0.5, 0.5], values=[0, 1]) for x in range(i)]
+            dice += [Die(2, probabilities=[0.5, 0.5], values=[0, 1]) for x in range(j)]
+        probs, values = get_dist(dice, lambda x : sum(x[:i])-sum(x[i:]))
+
+        ax1[int(i/2)-1, int(j/2)-1].fill_between(values, probs, 0, color='b', alpha=0.2, label='vs vamp')
+
+        # vs roll (mundane)
+        if count_ones:
+            dice = [Die(3, probabilities=[0.1, 0.4, 0.5], values=[-1, 0, 1]) for x in range(i)]
+            dice += [Die(3, probabilities=[0.1, 0.6, 0.3], values=[-1, 0, 1]) for x in range(j)]
+        else:
+            dice = [Die(2, probabilities=[0.5, 0.5], values=[0, 1]) for x in range(i)]
+            dice += [Die(2, probabilities=[0.7, 0.3], values=[0, 1]) for x in range(j)]
+        probs, values = get_dist(dice, lambda x : sum(x[:i])-sum(x[i:]))
+
+        ax1[int(i/2)-1, int(j/2)-1].fill_between(values, probs, 0, color='g', alpha=0.2, label='vs mundane')
+
+        # diff roll
+        if count_ones:
+            dice = [Die(3, probabilities=[0.1, (j-2)*0.1, 1-(j-1)*0.1], values=[-1, 0, 1]) for x in range(i)]
+        else:
+            dice = [Die(2, probabilities=[(j-1)*0.1, 1-(j-1)*0.1], values=[0, 1]) for x in range(i)]
+        probs, values = get_dist(dice, lambda x : sum(x))
+
+        ax1[int(i/2)-1, int(j/2)-1].fill_between(values, probs, 0, color='r', alpha=0.2, label='diff')
+
+        ax1[int(i/2)-1, int(j/2)-1].set_xlim([-(max_pool-1), max_pool+1])
+        ax1[int(i/2)-1, int(j/2)-1].set_ylim([0, 0.6])
+        ax1[int(i/2)-1, int(j/2)-1].plot([0, 0], [0, 0.4], 'k')
+        if j == min_will:
+            ax1[int(i/2)-1, int(j/2)-1].set(ylabel='{} dice'.format(i))
+        if i == max_pool:
+            ax1[int(i/2)-1, int(j/2)-1].set(xlabel='{} dice/diff'.format(j))
+            ax1[int(i/2)-1, int(j/2)-1].set_xticks(np.arange(-max_pool+step_pool, max_pool+1, step=step_pool))
+        if i == min_pool and j == max_will:
+            ax1[int(i/2)-1, int(j/2)-1].legend()
+        print("Time used: {}".format(time.time() - t))
+
+for ax in ax1.flat:
+    ax.label_outer()
+
+fig1.supxlabel('willpower of target')
+fig1.supylabel('discipline dicepool')
 plt.show()
