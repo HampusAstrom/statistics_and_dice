@@ -20,6 +20,9 @@ SKILLS_DICT = {
 }
 
 BASE_SIZE = len(SKILLS_DICT)
+IGNORE_FACTOR = 0.1
+MAIN_FACTOR = 1.
+CORE_FACTOR = 2.
 
 
 class skill:
@@ -122,9 +125,13 @@ class character:
 
 class department_generator:
 
-    def __init__(self, dep_name, core, main, ignore, spread_factor):
+    def __init__(self, dep_name, core, main, ignore, commanders, spread_factor):
         self.department_name = dep_name
-        self.st = self.gen_skill_table(core, main, ignore)
+        self.st = self.gen_skill_table(core, main, ignore, commanders)
+        self.core = core
+        self.main = main
+        self.ignore = ignore
+        self.commanders = commanders
         self.spread_factor = spread_factor
 
     def check_input(self, skilltable, input, input_name):
@@ -135,7 +142,7 @@ class department_generator:
                 print("Warning, {} in {} is not a listed skill and is not used!".format(s, input_name))
 
 
-    def gen_skill_table(self, core, main, ignore):
+    def gen_skill_table(self, core, main, ignore, commanders):
         """
         dict of all subskills for char gen with each entry having fields:
         skill, parent, base_prio, individual_prio, department_point_sum
@@ -149,16 +156,23 @@ class department_generator:
         self.check_input(skill_table, core, "core")
         self.check_input(skill_table, main, "main")
         self.check_input(skill_table, ignore, "ignore")
+        self.check_input(skill_table, commanders, "commanders")
+        for skill in commanders:
+            if skill in main or skill in core:
+                print("Warning, a commander skill is also present on the main or core list! Can lead to unexpected behaviour")
 
-        for skill in core:
-            skill_table[skill][2] = BASE_SIZE*4.
-            skill_table[skill][3] = BASE_SIZE*4.
-        for skill in main:
-            skill_table[skill][2] = BASE_SIZE*2.
-            skill_table[skill][3] = BASE_SIZE*2.
         for skill in ignore:
-            skill_table[skill][2] = 0.1
-            skill_table[skill][3] = 0.1
+            skill_table[skill][2] = IGNORE_FACTOR
+            skill_table[skill][3] = IGNORE_FACTOR
+        for skill in main:
+            skill_table[skill][2] = BASE_SIZE*MAIN_FACTOR
+            skill_table[skill][3] = BASE_SIZE*MAIN_FACTOR
+        for skill in commanders: # lowered proportionally after commanders are made
+            skill_table[skill][2] = BASE_SIZE*MAIN_FACTOR
+            skill_table[skill][3] = BASE_SIZE*MAIN_FACTOR
+        for skill in core:
+            skill_table[skill][2] = BASE_SIZE*CORE_FACTOR
+            skill_table[skill][3] = BASE_SIZE*CORE_FACTOR
 
         return skill_table
 
@@ -171,9 +185,9 @@ class department_generator:
 
         def points_to_add(char_points):
             if char_points >= mean_points:
-                return min(rng.randint(4, 6), char_points)
-            if char_points >= min_points:
                 return min(rng.randint(3, 5), char_points)
+            if char_points >= min_points:
+                return min(rng.randint(2, 4), char_points)
             if char_points >= min_points*0.5:
                 return min(rng.randint(1, 4), char_points)
             return min(rng.randint(1, 2), char_points)
@@ -195,11 +209,14 @@ class department_generator:
         d = np.random.default_rng().dirichlet(np.ones(num_chars),size=1)
         budget = np.rint(min_points + d * (mean_points-min_points) * num_chars)[0].astype(np.int32)
         budget = sorted(budget, reverse=True)
+        n_commanders = int(np.ceil(num_chars/10))
         print(budget)
+        print(n_commanders)
 
         weight_sum = calc_prio_sum()
+        commandes_active = True
 
-        for char_points in budget:
+        for i, char_points in enumerate(budget):
             char = character()
             char_sum = weight_sum
             while char_points > 0:
@@ -213,12 +230,21 @@ class department_generator:
                 char_points -= p
                 self.st[skill_name][4] += p # not completely accurate, as point might have gone to parent
                 char_sum -= self.st[skill_name][3]
-                self.st[skill_name][3] = 0
+                self.st[skill_name][3] *= 0.2
+                char_sum += self.st[skill_name][3]
 
                 t = self.st[skill_name][2]
                 new_weight = t * (1 - self.spread_factor/num_chars)
                 weight_sum -= (t - new_weight)
                 self.st[skill_name][2] = new_weight
+            # check for and remove commander prio if appropriate
+            if commandes_active and i > n_commanders:
+                for skill_name in self.commanders:
+                    red = self.st[skill_name][2]/MAIN_FACTOR
+                    if skill_name in self.ignore:
+                        self.st[skill_name][2] = red*IGNORE_FACTOR
+                    else:
+                        self.st[skill_name][2] = red*1.
             # reset individual_prio
             for skill in self.st.values():
                 skill[3] = skill[2]
@@ -241,5 +267,5 @@ if __name__ == "__main__":
     print(s1.get_total_value())
     print(s1.get_tree())
 
-    d = department_generator("test", ["Nuclear"], ["Physics", "Engineering", "Computers"], [], 0.1)
-    d.gen_characters(10, 20, 30)
+    d = department_generator("test", ["Nuclear", "Engineering"], ["Physics", "Introspection", "Computers", "Chemistry"], ["Martial", "Biology"], ["Communication", "Introspection"], 0.1)
+    d.gen_characters(10, 15, 20)
