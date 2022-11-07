@@ -118,8 +118,8 @@ class character:
         s = "Skills: \n"
         t = ""
         for skill in self.skills.values():
-            s += f"{skill.name:<15} {skill.value} -> {list(skill.children)[0]:<15} {list(skill.children.values())[0].value} \n"
-            s += f"{t:<17} `> {list(skill.children)[1]:<15} {list(skill.children.values())[1].value} \n"
+            s += f"{skill.name:<15} {skill.value} -> {list(skill.children)[0]:<15} {list(skill.children.values())[0].value} {list(skill.children.values())[0].value + skill.value}\n"
+            s += f"{t:<17} `> {list(skill.children)[1]:<15} {list(skill.children.values())[1].value} {list(skill.children.values())[1].value + skill.value} \n"
         return s
 
 
@@ -261,11 +261,13 @@ if __name__ == "__main__":
     """
     rudimentary testing
     """
-    s1 = skill("Physics", children=SKILLS_DICT["Physics"])
+    #s1 = skill("Physics", children=SKILLS_DICT["Physics"])
+    #s1.get_children()["Nuclear"].increase_value(3)
+    #print(s1.get_total_value())
+    #print(s1.get_tree())
 
-    s1.get_children()["Nuclear"].increase_value(3)
-    print(s1.get_total_value())
-    print(s1.get_tree())
-
-    d = department_generator("test", ["Nuclear", "Engineering"], ["Physics", "Introspection", "Computers", "Chemistry"], ["Martial", "Biology"], ["Communication", "Introspection"], 0.1)
-    d.gen_characters(10, 15, 20)
+    #d = department_generator("test", ["Nuclear", "Engineering"], ["Physics", "Introspection", "Computers", "Chemistry"], ["Martial", "Biology"], ["Communication", "Introspection"], 0.1)
+    #d.gen_characters(10, 15, 20)
+    d = department_generator("test", ["Engineering"], ["Hardware", "Orbital", "Leadership"], ["Biology", "Medicine", "Psycology"], [], 0.1)
+    #d = department_generator("test", [], ["Physics", "Cryo and Trauma", "Chemistry", "Psycology", "Introspection"], ["Piloting", "Martial", ], ["Leadership"], 0.1)
+    d.gen_characters(20, 10, 16)
