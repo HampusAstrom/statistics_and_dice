@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
 import math
+import sys
 
 def estimate_succ_rate(x, dist):
     succ = 0
@@ -55,6 +56,9 @@ def sample_dist(x, mu, sigma, samples, func):
 
     mean = np.mean(samp)
     std = np.std(samp)
+
+    if std <= 0.0:
+        std = 10/(np.sqrt(0.5+1))
 
     dist = func.pdf(x, mean, std)
     return dist
@@ -124,9 +128,9 @@ def plot_multi_dist(mu, sigma, start=-10, stop=10):
 
 def sigma_for_check(attibute, skill):
     if skill > 0:
-        sigma = 3/(np.sqrt(skill+1))
+        sigma = 10/(np.sqrt(skill+1))
     else:
-        sigma = 3/(np.sqrt(0.5+1))
+        sigma = 10/(np.sqrt(0.5+1))
     return sigma
 
 # maybe mu is defined by difference (attr + skill - difficulty)
@@ -148,23 +152,44 @@ samples = 5
 #dist_and_sample(mu, sigma, samples)
 #dice_dist()
 
-attr = 3
-insight = 2
-skill = 3
+def main(argv):
+    if len(argv) < 4:
+        print("Needs 4 arguments, attribute, insight, skill, diff, (bonus optional)")
+        exit()
 
-diff = 6
+    attr = int(argv[0]) #3
+    insight = int(argv[1]) #2
+    skill = int(argv[2]) #3
 
-mu = attr + skill - diff
-sigma = sigma_for_check(attr, skill)
-samples = insight + skill
+    diff = int(argv[3]) #6
 
-#dist_and_sample(mu, sigma, samples)
+    if len(argv) > 4:
+        bonus = int(argv[4]) # 0
+    else:
+        bonus = 0
 
-top_val = 7
-m = [0]*top_val
-s = [0]*top_val
-for attri in range(2,3):
-    for ski in range(top_val):
-        m[ski] = attri + ski - diff
-        s[ski] = sigma_for_check(attri, ski)
-    plot_multi_dist(m, s)
+    mu = attr + skill + bonus - diff
+    sigma = sigma_for_check(attr, skill)
+    samples = insight + skill
+    if samples < 1:
+        samples = 1
+
+    dist_and_sample(mu, sigma, samples)
+    func = stats.norm
+    a = func.rvs(loc=mu, scale=sigma, size=1)[0]
+    if a >= 0:
+        print(f"If this was the roll, you succeded with {a}")
+    else:
+        print(f"If this was the roll, you failed with {a}")
+
+# top_val = 7
+# m = [0]*top_val
+# s = [0]*top_val
+# for attri in range(2,3):
+#     for ski in range(top_val):
+#         m[ski] = attri + ski - diff
+#         s[ski] = sigma_for_check(attri, ski)
+#     plot_multi_dist(m, s)
+
+if __name__ == "__main__":
+   main(sys.argv[1:])
